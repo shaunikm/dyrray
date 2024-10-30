@@ -12,9 +12,9 @@ private:
     T* data;                        // pointer to array's memory block
     std::size_t size;               // number of elements currently in the array
     std::size_t current_capacity;   // allocated memory capacity at current call
-    double growth_factor;              // growth factor of memory allocated
+    double growth_factor;           // growth factor of memory allocated
     double shrink_sentinel;         // threshold to trigger shrink-to-fit
-    std::allocator<T> allocator;    // mem allocator (constructing/destructing)
+    std::allocator<T> allocator;    // memory allocator (constructing/destructing)
     
     // reallocate new chunk of data in linear blocks
     void reallocate(std::size_t new_capacity) {
