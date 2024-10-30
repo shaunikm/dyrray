@@ -1,2 +1,2 @@
 # updated-vector
-An optimized dynamic array written in C++
+An optimized dynamic array written in C++ to minimize reallocation overhead that comes with `std::vector` implementations
