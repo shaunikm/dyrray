@@ -56,7 +56,62 @@ public:
 
     // Destructor
     ~Dyrray() {
+        clear();
         allocator.deallocate(data, current_capacity);
+    }
+
+    // copy constructor
+    Dyrray(const Dyrray& other) : data(allocator.allocate(other.current_capacity)), size(other.size), current_capacity(other.current_capacity), growth_factor(other.growth_factor), shrink_sentinel(other.shrink_sentinel) {
+        for (std::size_t i = 0; i < size; i++) {
+            allocator.construct(&data[i], other.data[i]);
+        }
+    }
+
+    // copy assignment
+    Dyrray& operator= (const Dyrray& other) {
+        if (this != &other) {
+            clear();
+            allocator.deallocate(data, current_capacity);
+
+            size = other.size;
+            current_capacity = other.current_capacity;
+            growth_factor = other.growth_factor;
+            shrink_sentinel = other.shrink_sentinel;
+            
+            data = allocator.allocate(current_capacity);
+            for (std::size_t i = 0; i < size; i++) {
+                allocator.construct(&data[i], other.data[i]);
+            }
+        }
+        
+        return *this;
+    }
+
+    // move constructor
+    Dyrray(Dyrray&& other) noexcept : data(other.data), size(other.size), current_capacity(other.current_capacity), growth_factor(other.growth_factor), shrink_sentinel(other.shrink_sentinel) {
+        other.data = nullptr;
+        other.size = 0;
+        other.current_capacity = 0;
+    }
+
+    // move assignment
+    Dyrray& operator= (Dyrray&& other) noexcept {
+        if (this != &other) {
+            clear();
+            allocator.deallocate(data, current_capacity);
+
+            data = other.data;
+            size = other.size;
+            current_capacity = other.current_capacity;
+            growth_factor = other.growth_factor;
+            shrink_sentinel = other.shrink_sentinel;
+
+            other.data = nullptr;
+            other.size = 0;
+            other.current_capacity = 0;
+        }
+
+        return *this;
     }
 
     // accessor methods for size and current capacity
