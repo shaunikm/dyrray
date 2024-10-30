@@ -134,7 +134,7 @@ public:
     }
 
     // add new element
-    void push_back(T&& val) {
+    void push_back(T val) {
         if (size == current_capacity) {
             std::size_t new_capacity = (current_capacity == 0) ? 1 : static_cast<std::size_t>(current_capacity * growth_factor);
             reallocate(new_capacity);
@@ -158,6 +158,8 @@ public:
         for (std::size_t i = 0; i < size; i++) {
             allocator.destroy(&data[i]);
         }
+        size = 0;
+        shrink_to_fit();
     }
 
     // iterator support
