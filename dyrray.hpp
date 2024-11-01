@@ -6,41 +6,7 @@
 #include <iterator>
 #include <stdexcept>
 
-/*
-class DustyAncientSlabMemory {
-private:
-    struct Slab {
-        char* data;
-        std::size_t chunk_count;
-        std::vector<bool> free_list;
-
-        Slab(std::size_t chunk_count) : chunk_count(chunk_count), free_list(chunk_count) {};
-
-        ~Slab() {
-            delete[] data;
-        }
-    }
-
-public:
-
-};
-*/
-
-class DustyAncientSlabMemory {
-private:
-    struct Slab {
-        char* data;
-        std::size_t chunk_count;
-        std::vector<bool> free_list;
-
-        ~Slab() {
-            delete[] data;
-        }
-    };
-
-public:
-    DustyAncientSlabMemory() {}
-};
+#include "address_ordered_best_fit_allocator.hpp"
 
 template <typename T>
 
@@ -51,23 +17,15 @@ private:
     std::size_t current_capacity;   // allocated memory capacity at current call
     double growth_factor;           // growth factor of memory allocated
     double shrink_sentinel;         // threshold to trigger shrink-to-fit
-    std::allocator<T> allocator;    // memory allocator (constructing/destructing)
+    AddressOrderedBestFitAllocator<T> allocator;    // custom allocator
     
     // reallocate new chunk of data in linear blocks
     void reallocate(std::size_t new_capacity) {
         T* new_data = allocator.allocate(new_capacity);
 
-        try {
-            for (std::size_t i = 0; i < size; i++) {
-                allocator.construct(&new_data[i], std::move(data[i]));
-                allocator.destroy(&data[i]);
-            }
-        } catch (...) { // ensure deallocation in the case of an exception
-            for (std::size_t i = 0; i < size; i++) {
-                allocator.destroy(&data[i]);
-            }
-            allocator.deallocate(new_data, new_capacity);
-            throw;
+        for (std::size_t i = 0; i < size; i++) {
+            new(new_data + i) T(std::move(data[i])); // move-construct
+            data[i].~T(); // destroy old element
         }
 
         // deallocate old memory
@@ -117,7 +75,7 @@ public:
             
             data = allocator.allocate(current_capacity);
             for (std::size_t i = 0; i < size; i++) {
-                allocator.construct(&data[i], other.data[i]);
+                new (data + i) T(other.data[i]);
             }
         }
         
@@ -151,22 +109,14 @@ public:
         return *this;
     }
 
-    // accessor methods for size and current capacity
-    std::size_t get_size() const { return size; }
-    std::size_t get_capacity() const { return current_capacity; }
-
-    // operator overload for element access
-    T& operator[] (std::size_t index) { return data[index]; }
-    const T& operator[] (std::size_t index) const { return data[index]; }
-
     // access with bounds checking
     T& at(std::size_t index) {
-        if (index >= size || index < 0) throw std::out_of_range("Index " + std::to_string(index) + " out of range");
+        if (index >= size) throw std::out_of_range("Index " + std::to_string(index) + " out of range");
         return data[index];
     }
 
     const T& at(std::size_t index) const {
-        if (index >= size || index < 0) throw std::out_of_range("Index " + std::to_string(index) + " out of range");
+        if (index >= size) throw std::out_of_range("Index " + std::to_string(index) + " out of range");
         return data[index];
     }
 
@@ -177,7 +127,7 @@ public:
             reallocate(new_capacity);
         }
 
-        allocator.construct(&data[size], val);
+        new(data + size) T(val);
         size++;
     }
 
@@ -185,7 +135,7 @@ public:
     void pop_back() {
         if (size > 0) {
             size--;
-            allocator.destroy(&data[size]);
+            data[size].~T();
             shrink_to_fit();
         }
     }
@@ -193,11 +143,19 @@ public:
     // clear all elements, but retain allocated memory for reuse
     void clear() {
         for (std::size_t i = 0; i < size; i++) {
-            allocator.destroy(&data[i]);
+            data[i].~T();
         }
         size = 0;
         shrink_to_fit();
     }
+
+        // accessor methods for size and current capacity
+    std::size_t get_size() const { return size; }
+    std::size_t get_capacity() const { return current_capacity; }
+
+    // operator overload for element access
+    T& operator[] (std::size_t index) { return data[index]; }
+    const T& operator[] (std::size_t index) const { return data[index]; }
 
     // iterator support
     iterator begin() { return data; }
