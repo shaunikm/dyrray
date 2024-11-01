@@ -2,8 +2,45 @@
 #define DYRRAY_HPP
 
 #include <memory> // for std::allocator
+#include <vector>
 #include <iterator>
 #include <stdexcept>
+
+/*
+class DustyAncientSlabMemory {
+private:
+    struct Slab {
+        char* data;
+        std::size_t chunk_count;
+        std::vector<bool> free_list;
+
+        Slab(std::size_t chunk_count) : chunk_count(chunk_count), free_list(chunk_count) {};
+
+        ~Slab() {
+            delete[] data;
+        }
+    }
+
+public:
+
+};
+*/
+
+class DustyAncientSlabMemory {
+private:
+    struct Slab {
+        char* data;
+        std::size_t chunk_count;
+        std::vector<bool> free_list;
+
+        ~Slab() {
+            delete[] data;
+        }
+    };
+
+public:
+    DustyAncientSlabMemory() {}
+};
 
 template <typename T>
 
@@ -42,7 +79,7 @@ private:
     // shrink-to-fit with custom sentinel value
     void shrink_to_fit() {
         if (size < current_capacity * shrink_sentinel) {
-            reallocate(size); // keep only memory needed for current elements
+            reallocate(size); // only keep memory needed for current elements
         }
     }
 
