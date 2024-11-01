@@ -4,12 +4,11 @@
 #include <set>
 #include <memory>
 
-template <typename T>
-
 /**
  * Memory allocator that uses address-ordered policy and
  * best-fit policy to try to reduce memory fragmentation
  */
+template <typename T>
 class AddressOrderedBestFitAllocator {
 private:
     struct Block {

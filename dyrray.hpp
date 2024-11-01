@@ -1,37 +1,48 @@
 #ifndef DYRRAY_HPP
 #define DYRRAY_HPP
 
-#include <memory> // for std::allocator
-#include <vector>
 #include <iterator>
 #include <stdexcept>
+#include <utility>
+#include <new>
 
 #include "address_ordered_best_fit_allocator.hpp"
 
 template <typename T>
-
 class Dyrray {
 private:
-    T* data;                        // pointer to array's memory block
-    std::size_t size;               // number of elements currently in the array
-    std::size_t current_capacity;   // allocated memory capacity at current call
-    double growth_factor;           // growth factor of memory allocated
-    double shrink_sentinel;         // threshold to trigger shrink-to-fit
+    T* data;                                        // pointer to array's memory block
+    std::size_t size;                               // number of elements currently in the array
+    std::size_t current_capacity;                   // allocated memory capacity at current call
+    double growth_factor;                           // growth factor of memory allocated
+    double shrink_sentinel;                         // threshold to trigger shrink-to-fit
     AddressOrderedBestFitAllocator<T> allocator;    // custom allocator
-    
+
     // reallocate new chunk of data in linear blocks
     void reallocate(std::size_t new_capacity) {
-        T* new_data = allocator.allocate(new_capacity);
+        T* new_data = nullptr;
 
-        for (std::size_t i = 0; i < size; i++) {
-            new(new_data + i) T(std::move(data[i])); // move-construct
-            data[i].~T(); // destroy old element
+        try {
+            new_data = allocator.allocate(new_capacity);
+            
+            for (std::size_t i = 0; i < size; i++) {
+                new(new_data + i) T(std::move(data[i])); // move-construct in new location
+                data[i].~T(); // destroy old elements
+            }
+            
+            allocator.deallocate(data, current_capacity);
+
+            data = new_data;
+            current_capacity = new_capacity;
+        } catch (...) {
+            if (new_data) {
+                for (std::size_t i = 0; i < size; i++) {
+                    new_data[i].~T(); // destroy new elements
+                }
+                allocator.deallocate(new_data, new_capacity);
+            }
+            throw; // rethrow caught exception
         }
-
-        // deallocate old memory
-        allocator.deallocate(data, current_capacity);
-        data = new_data;
-        current_capacity = new_capacity;
     }
 
     // shrink-to-fit with custom sentinel value
@@ -58,7 +69,7 @@ public:
     // copy constructor
     Dyrray(const Dyrray& other) : data(allocator.allocate(other.current_capacity)), size(other.size), current_capacity(other.current_capacity), growth_factor(other.growth_factor), shrink_sentinel(other.shrink_sentinel) {
         for (std::size_t i = 0; i < size; i++) {
-            allocator.construct(&data[i], other.data[i]);
+            new(data + i) T(other.data[i]);
         }
     }
 
@@ -149,7 +160,7 @@ public:
         shrink_to_fit();
     }
 
-        // accessor methods for size and current capacity
+    // accessor methods for size and current capacity
     std::size_t get_size() const { return size; }
     std::size_t get_capacity() const { return current_capacity; }
 
